@@ -1,0 +1,91 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+	<groupId>me.nbuchon</groupId>
+	<artifactId>drools-upgrade-issue-reproducer</artifactId>
+	<version>0.0.1-SNAPSHOT</version>
+	<name>drools-upgrade-issue-reproducer</name>
+
+
+	<dependencyManagement>
+		<dependencies>
+			<dependency>
+				<groupId>org.drools</groupId>
+				<artifactId>drools-bom</artifactId>
+				<type>pom</type>
+				<!-- <version>6.2.0.Final</version> -->
+				<!-- <version>6.3.0.Final</version> -->
+				<!-- <version>6.4.0.Final</version> -->
+				<!-- <version>6.5.0.Final</version> -->
+				<!-- <version>7.1.0.Final</version> -->
+				<!-- <version>7.7.0.Final</version> -->
+				<!-- <version>7.33.0.Final</version> -->
+				<!-- <version>7.38.0.Final</version> -->
+				<!-- <version>7.45.0.Final</version> -->
+				<!-- <version>7.45.0.Final</version> -->
+				<version>7.46.0.Final</version>
+				<!--<version>7.47.0-SNAPSHOT</version> -->
+				<scope>import</scope>
+			</dependency>
+		</dependencies>
+	</dependencyManagement>
+
+	<dependencies>
+		<dependency>
+			<groupId>org.kie</groupId>
+			<artifactId>kie-ci</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.drools</groupId>
+			<artifactId>drools-core</artifactId>
+		</dependency>
+	</dependencies>
+ 	<repositories>
+<!-- 		<repository>
+			<id>jboss-public-repository-group</id>
+			<name>JBoss Public Repository Group</name>
+			<url>https://repository.jboss.org/nexus/content/groups/public/</url>
+			<layout>default</layout>
+			<releases>
+				<enabled>false</enabled>
+				<updatePolicy>never</updatePolicy>
+			</releases>
+			<snapshots>
+				<enabled>true</enabled>
+				<updatePolicy>daily</updatePolicy>
+			</snapshots>
+		</repository> -->
+	</repositories>
+	<build>
+		<plugins>
+			<plugin>
+				<artifactId>maven-compiler-plugin</artifactId>
+				<configuration>
+					<source>1.8</source>
+					<target>1.8</target>
+				</configuration>
+			</plugin>
+			</plugins>
+			<pluginManagement>
+<plugins>
+
+ <plugin>
+<artifactId>maven-compiler-plugin</artifactId>
+<version>3.1</version>
+<configuration>
+<verbose>true</verbose>
+<fork>true</fork>
+<source>1.8</source>
+<target>1.8</target>
+<encoding>UTF-8</encoding>
+</configuration>
+</plugin>
+</plugins>
+</pluginManagement>
+			</build>
+			
+			
+</project>
+
+
