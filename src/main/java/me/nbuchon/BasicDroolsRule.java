@@ -34,7 +34,7 @@ public class BasicDroolsRule {
       }
 
       // Init 100 threads to call a query
-        final List<Thread> threads = new ArrayList<>(100);
+      final List<Thread> threads = new ArrayList<>(100);
         for (int i = 0; i < 100; i++) {
           final Wrapper<Integer> cpt = new Wrapper<>(i);
           // preparing 100 successive query calls per thread
@@ -42,7 +42,7 @@ public class BasicDroolsRule {
             @Override
             public void run() {
               int foundCount = 0;
-              for (int j = 0; j < 1000; j++) {
+              for (int j = 0; j < 10; j++) {
                 System.out.println("Calling all the sessions' query by Thread n°" + cpt.get() + " n°" + (j + 1));
                 for (final KieSession session : sessions) {
                   if (BasicDroolsRule.callQueries(session)) {
@@ -73,9 +73,51 @@ public class BasicDroolsRule {
             // and fire the rules in the meantime!
             session.fireAllRules();
 
-            BasicDroolsRule.callQueries(session);
+            // BasicDroolsRule.callQueries(session);
+
+            final Thread threadedQueryCalls = new Thread() {
+              @Override
+              public void run() {
+                int foundCount = 0;
+                for (int j = 0; j < 10; j++) {
+                  System.out.println("Calling all the sessions' query by Thread after fire - call n°" + (j + 1));
+                  for (final KieSession session : sessions) {
+                    if (BasicDroolsRule.callQueries(session)) {
+                      foundCount++;
+                    }
+                  }
+                }
+                System.out.println("End of queryCalls for thread after fire, found message here " + foundCount + " times.");
+              }
+            };
+            threads.add(threadedQueryCalls);
+            threadedQueryCalls.start();
+
           }
         }
+
+        boolean running = false;
+        do {
+          try {
+            Thread.sleep(200);
+          } catch (final InterruptedException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+          }
+          for (final Thread thread : threads) {
+            if (thread.isAlive()) {
+              running = true;
+              break;
+            } else {
+              running = false;
+            }
+          }
+          if (running == false) {
+            System.out.println("All finished, we will quit then");
+          }
+        }
+        while (running);
+
 
         // and then dispose the session
         for (final KieSession session : sessions) {
@@ -118,7 +160,7 @@ public class BasicDroolsRule {
                                                @Override
                                                public Boolean call() throws Exception {
                                                  System.out.println("dodo");
-                                                 Thread.sleep(100);
+                                                 Thread.sleep(1);
                                                  return true;
                                                }
                                              };
