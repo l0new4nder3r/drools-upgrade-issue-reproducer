@@ -1,6 +1,7 @@
 package me.nbuchon;
 
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.concurrent.Callable;
 
@@ -18,7 +19,10 @@ import org.kie.api.runtime.KieSession;
 public class BasicDroolsRule {
 
     public static final void main(final String[] args) {
-      // init ksession from reproducer.drl
+      // Initialising 100 sessions
+      final List<KieSession> sessions = new ArrayList<>(20);
+      for (int i = 0; i < 20; i++) {
+        // init ksession from reproducer.drl
         final KieServices ks = KieServices.Factory.get();
         final KieContainer kc = ks.getKieClasspathContainer();
         final KieSession ksession = kc.newKieSession("ReproducerKS");
@@ -26,62 +30,76 @@ public class BasicDroolsRule {
                             new ArrayList<Object>() );
         ksession.addEventListener( new DebugAgendaEventListener() );
         ksession.addEventListener( new DebugRuleRuntimeEventListener() );
+        sessions.add(ksession);
+      }
 
-        // To setup a file based audit logger, uncomment the next line
-        // KieRuntimeLogger logger = ks.getLoggers().newFileLogger( ksession, "./helloworld" );
-
-        // To setup a ThreadedFileLogger, so that the audit view reflects events whilst debugging,
-        // uncomment the next line
-        // KieRuntimeLogger logger = ks.getLoggers().newThreadedFileLogger( ksession, "./helloworld", 1000 );
-
-        // The application can insert facts into the session
-        final Message message = new Message();
-        message.setMessage( "Hello World" );
-        message.setStatus( Message.HELLO );
-        ksession.insert( message );
-
+      // Init 100 threads to call a query
         final List<Thread> threads = new ArrayList<>(100);
         for (int i = 0; i < 100; i++) {
           final Wrapper<Integer> cpt = new Wrapper<>(i);
-          // preparing 100 successive query calls in another thread
+          // preparing 100 successive query calls per thread
           final Thread threadedQueryCalls = new Thread() {
             @Override
             public void run() {
               int foundCount = 0;
-              for (int j = 0; j < 100; j++) {
-                System.out.println("Call query Thread n°" + cpt.get() + " n°" + (j + 1));
-                if (BasicDroolsRule.callQuery(ksession)) {
-                  foundCount++;
+              for (int j = 0; j < 1000; j++) {
+                System.out.println("Calling all the sessions' query by Thread n°" + cpt.get() + " n°" + (j + 1));
+                for (final KieSession session : sessions) {
+                  if (BasicDroolsRule.callQueries(session)) {
+                    foundCount++;
+                  }
                 }
               }
-              System.out.println("End of queryCalls, found message " + foundCount + " times.");
+              System.out.println("End of queryCalls for thread n°" + cpt.get() + ", found message here " + foundCount + " times.");
             }
           };
           threads.add(threadedQueryCalls);
         }
 
+        // start those threads
         for (final Thread thread : threads) {
           // starting those calls
           thread.start();
         }
 
-        // and fire the rules in the meantime!
-        ksession.fireAllRules();
+        for (final KieSession session : sessions) {
+          // let's insert messages and fire all the rules, 100 times
+          for (int i = 0; i < 100; i++) {
+            final Message message = new Message();
+            message.setMessage("Hello World");
+            message.setStatus(Message.HELLO);
+            session.insert(message);
 
-        BasicDroolsRule.callQuery(ksession);
+            // and fire the rules in the meantime!
+            session.fireAllRules();
 
-        // Remove comment if using logging
-        // logger.close();
+            BasicDroolsRule.callQueries(session);
+          }
+        }
 
         // and then dispose the session
-        ksession.dispose();
+        for (final KieSession session : sessions) {
+          session.dispose();
+        }
     }
 
-    private static boolean callQuery(final KieSession ksession) {
+    private static boolean callQueries(final KieSession ksession) {
       final Wrapper<Boolean> found = new Wrapper<Boolean>(false);
       ksession.getQueryResults("message here").forEach(result -> {
         final Message here = (Message) result.get("$here");
         System.out.println("Found a message here: " + here.getMessage());
+        final FoundMessage last = (FoundMessage) result.get("$last");
+        System.out.println("Found, last message: " + last.getDatetime());
+        found.set(true);
+      });
+      ksession.getQueryResults("count messages here").forEach(result -> {
+        final Long count = (Long) result.get("$messagesCount");
+        // System.out.println("Found count messages : " + count);
+        found.set(true);
+      });
+      ksession.getQueryResults("hi message").forEach(result -> {
+        final Message hi = (Message) result.get("$hello");
+        System.out.println("Found a hi message: " + hi.getMessage());
         found.set(true);
       });
       return found.get();
@@ -100,7 +118,7 @@ public class BasicDroolsRule {
                                                @Override
                                                public Boolean call() throws Exception {
                                                  System.out.println("dodo");
-                                                 Thread.sleep(200);
+                                                 Thread.sleep(100);
                                                  return true;
                                                }
                                              };
@@ -138,6 +156,43 @@ public class BasicDroolsRule {
         public Callable<Boolean> getTest() {
           return this.test;
         }
+    }
+
+    public static class FoundMessage {
+      private Date datetime;
+      private String message;
+      private int  status;
+
+      public FoundMessage(final String message, final int status, final Date date) {
+        this.datetime = date;
+        this.message = message;
+        this.status = status;
+      }
+
+      public Date getDatetime() {
+        return this.datetime;
+      }
+
+      public void setDatetime(final Date datetime) {
+        this.datetime = datetime;
+      }
+
+      public String getMessage() {
+        return this.message;
+      }
+
+      public void setMessage(final String message) {
+        this.message = message;
+      }
+
+      public int getStatus() {
+        return this.status;
+      }
+
+      public void setStatus(final int status) {
+        this.status = status;
+      }
+
     }
 
     public static class Wrapper<T> {

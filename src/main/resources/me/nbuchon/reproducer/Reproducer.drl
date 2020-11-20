@@ -1,12 +1,29 @@
 package me.nbuchon.reproducer
  
 import  me.nbuchon.BasicDroolsRule.Message;
-
+import  me.nbuchon.BasicDroolsRule.FoundMessage;
 global java.util.List list
 
+declare FoundMessage
+	@role(event)
+    datetime : java.util.Date
+    message : String
+    status : int
+end
 
 query "message here" 
     $here : Message( test.call()==true, status == Message.HERE, message : message )
+    $last : FoundMessage () over window:length(1)
+end
+
+query "count messages here"
+    accumulate( $m : Message ();
+    	$messagesCount : count($m)
+    )
+end
+
+query "hi message"
+	$hello : Message( test.call()==true, status == Message.HELLO, message : message )
 end
 
 rule "Hello World"
@@ -15,6 +32,7 @@ rule "Hello World"
         m : Message( status == Message.HELLO, message : message )
     then
         System.out.println( message );
+
 	    modify ( m ) { message = "I am here",
 	                   status = Message.HERE };
 end
@@ -26,22 +44,29 @@ rule "I am here"
         $m : Message( status == Message.HERE, message : message )
 	then
 	    System.out.println( message );
+
 	    //try{
 	    //	// from 28-??
 	    //	Thread.sleep(2000);
 	    //} catch (final InterruptedException e) {
         //  e.printStackTrace();
         //}
+    	for (org.kie.api.runtime.rule.QueryResultsRow row : kcontext.getKieRuntime().getQueryResults("count messages here")){
+	    	Long $messagesCount = (Long)row.get("$messagesCount");
+        	System.out.println( "From query, messages count: " + $messagesCount );
 
-        for (int i = 0; i < 1000; i++) {
-        	for (org.kie.api.runtime.rule.QueryResultsRow row : kcontext.getKieRuntime().getQueryResults("message here")){
-		    	Message $messageHere = (Message)row.get("$here");
-	        	System.out.println( "From toto loop : "+i+" " + $messageHere.getMessage() );
-    		}
     	}
+        //for (int i = 0; i < 1000; i++) {
+        //	for (org.kie.api.runtime.rule.QueryResultsRow row : kcontext.getKieRuntime().getQueryResults("message here")){
+		//    	Message $messageHere = (Message)row.get("$here");
+	    //    	System.out.println( "From toto loop : "+i+" " + $messageHere.getMessage() );
+    	//	}
+    	//}
     	for (org.kie.api.runtime.rule.QueryResultsRow row : kcontext.getKieRuntime().getQueryResults("message here")){
 	    	Message $messageHere = (Message)row.get("$here");
         	System.out.println( "From query: " + $messageHere.getMessage() );
+        	FoundMessage $last = (FoundMessage)row.get("$last");
+        	System.out.println("From Query, last FoundMessage: "+$last.getDatetime()); 
         	$messageHere.setMessage("Goodbye cruel world");
 	    	$messageHere.setStatus(Message.GOODBYE);
 	    	update($messageHere);
@@ -55,7 +80,9 @@ end
 rule "Good Bye"
     dialect "java"
     when
-        Message( status == Message.GOODBYE, message : message )
+        $m : Message( status == Message.GOODBYE, message : message )
     then
         System.out.println( message );
+        FoundMessage $fm = new FoundMessage(message, $m.getStatus(), new java.util.Date(kcontext.getKieRuntime().getSessionClock().getCurrentTime()));
+        insert($fm);
 end
